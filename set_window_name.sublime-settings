@@ -1,0 +1,7 @@
+{
+  "project_prefix": "({project}) ",
+  "generic_suffix": " - ST",
+  "ignore_empty_project": true,
+  "use_rel_path": true,
+  "debug": true,
+}
