@@ -3,23 +3,14 @@ import sublime
 import os
 from sublime_plugin import EventListener
 
-WAS_DIRTY = "set_window_name_was_dirty"
+WAS_DIRTY = "set_new_title_was_dirty"
 
 class SetWindowTitle(EventListener):
 
-  settings = sublime.load_settings("set_window_title.sublime-settings")
   SCRIPT_PATH = os.path.join(
         sublime.packages_path(),
         "SetWindowTitle",
         "fix_window_title.sh")
-  TEMPLATE = settings.get('template')
-  HAS_PROJECT_TRUE = settings.get('has_project_true')
-  HAS_PROJECT_FALSE = settings.get('has_project_false')
-  IS_DIRTY_TRUE = settings.get('is_dirty_true')
-  IS_DIRTY_FALSE = settings.get('is_dirty_false')
-  UNTITLED = settings.get('untitled')
-
-  DEBUG = settings.get('debug')
 
   def on_activated_async(self, view):
     self.run(view)
@@ -36,8 +27,8 @@ class SetWindowTitle(EventListener):
     project = self.get_project(view)
 
     official_title = self.get_official_title(view, view_name, project)
-    window_name = self.get_new_title(view, view_name, project)
-    self.rename_window(official_title, window_name)
+    new_title = self.get_new_title(view, view_name, project)
+    self.rename_window(official_title, new_title)
     view.settings().set(WAS_DIRTY, view.is_dirty())
 
   def get_project(self, view):
@@ -70,37 +61,43 @@ class SetWindowTitle(EventListener):
     """
     Returns the new name for a given view, according to the user preferences.
     """
-    full_path = view_name
-    folders = view.window().folders()
-    root = folders[0] if folders else None
-    if root and view_name:
-      rel_path = os.path.relpath(view_name, root)
-    if not view_name:
-      full_path = self.UNTITLED
-      rel_path = self.UNTITLED
+    settings = sublime.load_settings("set_window_title.sublime-settings")
 
-    has_project = _format_condition(
-        project, self.HAS_PROJECT_TRUE, self.HAS_PROJECT_FALSE,
-        rel_path=rel_path, full_path=full_path, project=project)
-    is_dirty = _format_condition(
-        view.is_dirty(), self.IS_DIRTY_TRUE, self.IS_DIRTY_FALSE,
+    full_path = view_name or settings.get('untitled')
+    rel_path = full_path
+
+    # Don't try to compute relative path if we don't have a file path.
+    if view.file_name():
+      folders = view.window().folders()
+      root = folders[0] if folders else None
+      if root:
+        rel_path = os.path.relpath(view.file_name(), root)
+
+    template = settings.get('template')
+    template = self._replace_condition(
+        template, 'has_project', project, settings)
+    template = self._replace_condition(
+        template, 'is_dirty', view.is_dirty(), settings)
+
+    return template.format(
         rel_path=rel_path, full_path=full_path, project=project)
 
-    return self.TEMPLATE.format(
-        has_project=has_project, is_dirty=is_dirty,
-        rel_path=rel_path, full_path=full_path, project=project)
+  def _replace_condition(self, template, condition, value, settings):
+    if value:
+      replacement = settings.get(condition + '_true')
+    else:
+      replacement = settings.get(condition + '_false')
+    return template.replace('{%s}' % condition, replacement)
+
 
   def rename_window(self, official_title, new_title):
     """Rename a subl window using the fix_window_title.sh script."""
+    settings = sublime.load_settings("set_window_title.sublime-settings")
+    debug = settings.get('debug')
     cmd = 'bash %s "%s" "%s"' % (
         self.SCRIPT_PATH, official_title, new_title)
-    if self.DEBUG:
+    if debug:
       print('$', cmd)
     output = os.popen(cmd + " 1&2").read()
-    if self.DEBUG:
+    if debug:
       print(output)
-
-def _format_condition(condition, template_true, template_false, **kwargs):
-  template = template_true if condition else template_false
-  if template:
-    return template.format(**kwargs)

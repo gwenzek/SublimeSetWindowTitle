@@ -1,21 +1,26 @@
 {
   // Template for the window title.
   // The template accept the following parameters:
-  // - full_path: the full path of the selected file
-  // - rel_path: the path of the selected file relative to the top folder
-  // - project: the project name, or the name of the top folder
-  // - has_project: will be replaced by the content of "has_project_true" or
+  // - {full_path}: the full path of the selected file
+  // - {rel_path}: the path of the selected file relative to the top folder
+  // - {project}: the project name, or the name of the top folder
+  // - {has_project}: will be replaced by the content of "has_project_true" or
   //   "has_project_false" settings, depending if a "project" has been found.
-  // - is_dirty: will be replaced by the content of "is_dirty_true" or
+  // - {is_dirty}: will be replaced by the content of "is_dirty_true" or
   //   "is_dirty_false" settings, depending if the current view is being
   //   modified.
-  "template": "{has_project}{rel_path}{is_dirty} ST",
+  //
+  // Note that the replacement happens before the formatting.
+  // So "has_project_true", "has_project_false", ... strings may contains other
+  // parameters like {project}.
+  "template": "{has_project}{rel_path} {is_dirty} ST",
+
   "has_project_true": "({project}) ",
   "has_project_false": "",
-  "is_dirty_true": " ~",
-  "is_dirty_false": " -",
+  "is_dirty_true": "~",
+  "is_dirty_false": "-",
 
-  // The value of full_path and rel_path for untitled files.
+  // The value of {full_path} and {rel_path} for untitled files.
   "untitled": "<untitled>",
   // Output some debug info in the console.
   "debug": false,
