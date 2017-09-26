@@ -2,6 +2,9 @@
 
 window_pattern="$1"
 window_name="$2"
+
+# Note: this could be simpler if there was a way to know the pid
+# of the current subl window.
 pids=$(xdotool search --class --onlyvisible "subl")
 
 for pid in $pids; do
@@ -12,4 +15,3 @@ for pid in $pids; do
         xdotool set_window --name "$window_name" "$pid"
     fi
 done
-
