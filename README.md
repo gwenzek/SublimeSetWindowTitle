@@ -4,6 +4,11 @@ This plugin allows you to configure the title of your Sublime Text windows.
 Every time you switch view, save a view, start editing a view,
 it will update the window title.
 
+## Installation
+
+If you don't install this plugin through Package Control, ensure you name the
+folder to `SetWindowTitle`.
+
 ## Requirement
 
 This plugin assume you are using Linux and you have installed `xdotools`.
@@ -21,4 +26,4 @@ documentation.
   and rename the one with a name matching the expected name.
   If there was a reliable way to find the PID of the correct window then we could drop the `get_official_name` method, and simplify the script a lot.
 
-* For some reason UTF-8 chars seems to be corrupted at some point.
+* For some reason some chars aren't displayed correctly.
