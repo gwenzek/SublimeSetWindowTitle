@@ -1,16 +1,29 @@
 import sublime
 
 import os
+import time
 from sublime_plugin import EventListener
 
-WAS_DIRTY = "set_new_title_was_dirty"
+WAS_DIRTY = "set_window_title_was_dirty"
 
 class SetWindowTitle(EventListener):
 
-  SCRIPT_PATH = os.path.join(
-        sublime.packages_path(),
-        "SetWindowTitle",
-        "fix_window_title.sh")
+  script_path = None
+
+  def __init__(self):
+    sublime.set_timeout_async(self.on_sublime_started, 1000)
+
+  def on_sublime_started(self):
+    packages_path = sublime.packages_path()
+    while not packages_path:
+      packages_path = sublime.packages_path()
+      time.sleep(1)
+
+    self.script_path = os.path.join(
+        packages_path, "SetWindowTitle", "fix_window_title.sh")
+
+    for window in sublime.windows():
+      self.run(window.active_view())
 
   def on_activated_async(self, view):
     self.run(view)
@@ -23,6 +36,10 @@ class SetWindowTitle(EventListener):
     self.run(view)
 
   def run(self, view):
+    if not self.script_path:
+      print("SetWindowTitle: ST haven't finished loading yet, skipping.")
+      return
+
     view_name = view.name() or view.file_name()
     project = self.get_project(view)
 
@@ -94,10 +111,9 @@ class SetWindowTitle(EventListener):
     """Rename a subl window using the fix_window_title.sh script."""
     settings = sublime.load_settings("set_window_title.sublime-settings")
     debug = settings.get('debug')
-    cmd = 'bash %s "%s" "%s"' % (
-        self.SCRIPT_PATH, official_title, new_title)
+    cmd = 'bash %s "%s" "%s"' % (self.script_path, official_title, new_title)
     if debug:
       print('$', cmd)
     output = os.popen(cmd + " 1&2").read()
     if debug:
-      print(output)
+      print('>', output)
