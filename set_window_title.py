@@ -20,8 +20,8 @@ class SetWindowTitle(EventListener):
       packages_path = sublime.packages_path()
       time.sleep(1)
 
-    self.script_path = os.path.join(
-        packages_path, __package__, "fix_window_title.sh")
+    self.script_path = os.path.join(packages_path, __package__,
+                                    "fix_window_title.sh")
 
     for window in sublime.windows():
       self.run(window.active_view())
@@ -41,11 +41,10 @@ class SetWindowTitle(EventListener):
       print("[SetWindowTitle] Info: ST haven't finished loading yet, skipping.")
       return
 
-    view_name = view.name() or view.file_name()
     project = self.get_project(view)
 
-    official_title = self.get_official_title(view, view_name, project)
-    new_title = self.get_new_title(view, view_name, project)
+    official_title = self.get_official_title(view, project)
+    new_title = self.get_new_title(view, project, official_title)
     self.rename_window(official_title, new_title)
     view.settings().set(WAS_DIRTY, view.is_dirty())
 
@@ -65,13 +64,14 @@ class SetWindowTitle(EventListener):
 
     return project
 
-  def get_official_title(self, view, view_name, project):
+  def get_official_title(self, view, project):
     """Returns the official name for a given view.
 
     Note: The full file path isn't computed,
     because ST uses `~` to shorten the path.
     """
-    official_title = os.path.basename(view_name) if view_name else "untitled"
+    view_name = view.name() or view.file_name() or "untitled"
+    official_title = os.path.basename(view_name)
     if view.is_dirty():
       official_title += " •"
     if project:
@@ -79,30 +79,51 @@ class SetWindowTitle(EventListener):
     official_title += " - Sublime Text"
     return official_title
 
-  def get_new_title(self, view, view_name, project, old_title):
+  def get_new_title(self, view, project, old_title):
     """Returns the new name for a view, according to the user preferences."""
     settings = sublime.load_settings("set_window_title.sublime-settings")
 
-    full_path = view_name or settings.get('untitled')
-    rel_path = full_path
+    path = self._get_displayed_path(view, settings)
 
-    # Don't try to compute relative path if we don't have a file path.
     if view.file_name():
       full_path = view.file_name()
+
+    template = settings.get("template")
+    template = self._replace_condition(template, "has_project", project,
+                                       settings)
+    template = self._replace_condition(template, "is_dirty",
+                                       view.is_dirty(), settings)
+
+    return template.format(path=path, project=project)
+
+  def _get_displayed_path(self, view, settings):
+    view_name = view.name()
+    # view.name() is set by other plugins so it's probably the best choice.
+    if view_name:
+      return view_name
+
+    full_path = view.file_name()
+    if not full_path:
+      return settings.get("untitled", "untitled")
+
+    display = settings.get("path_display")
+    if display in ("full", "shortest"):
+      home = os.environ.get("HOME")
+      if home and full_path.startswith(home):
+        full_path = "~" + full_path[len(home):]
+
+    if display in ("relative", "shortest"):
       window = view.window()
       folders = window.folders() if window else None
       root = folders[0] if folders else None
-      if root:
-        rel_path = os.path.relpath(view.file_name(), root)
+      rel_path = os.path.relpath(full_path, root) if root else full_path
 
-    template = settings.get("template")
-    template = self._replace_condition(
-        template, "has_project", project, settings)
-    template = self._replace_condition(
-        template, "is_dirty", view.is_dirty(), settings)
-
-    return template.format(
-        rel_path=rel_path, full_path=full_path, project=project)
+    if display == "full":
+      return full_path
+    elif display == "relative":
+      return rel_path
+    else:  # default to "shortest"
+      return full_path if len(full_path) <= len(rel_path) else rel_path
 
   def _replace_condition(self, template, condition, value, settings):
     if value:
