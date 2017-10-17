@@ -6,8 +6,7 @@ it will update the window title.
 
 ## Installation
 
-If you don't install this plugin through Package Control, ensure you name the
-folder to `SetWindowTitle`.
+This package is avalaible on [PackageControl](https://packagecontrol.io/).
 
 ## Requirement
 

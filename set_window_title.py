@@ -6,6 +6,7 @@ from sublime_plugin import EventListener
 
 WAS_DIRTY = "set_window_title_was_dirty"
 
+
 class SetWindowTitle(EventListener):
 
   script_path = None
@@ -20,7 +21,7 @@ class SetWindowTitle(EventListener):
       time.sleep(1)
 
     self.script_path = os.path.join(
-        packages_path, "SetWindowTitle", "fix_window_title.sh")
+        packages_path, __package__, "fix_window_title.sh")
 
     for window in sublime.windows():
       self.run(window.active_view())
@@ -101,19 +102,18 @@ class SetWindowTitle(EventListener):
 
   def _replace_condition(self, template, condition, value, settings):
     if value:
-      replacement = settings.get(condition + '_true')
+      replacement = settings.get(condition + "_true")
     else:
-      replacement = settings.get(condition + '_false')
-    return template.replace('{%s}' % condition, replacement)
-
+      replacement = settings.get(condition + "_false")
+    return template.replace("{%s}" % condition, replacement)
 
   def rename_window(self, official_title, new_title):
     """Rename a subl window using the fix_window_title.sh script."""
     settings = sublime.load_settings("set_window_title.sublime-settings")
-    debug = settings.get('debug')
+    debug = settings.get("debug")
     cmd = 'bash %s "%s" "%s"' % (self.script_path, official_title, new_title)
     if debug:
-      print('$', cmd)
+      print("[SetWindowTitle] Debug: running: ", cmd)
     output = os.popen(cmd + " 1&2").read()
     if debug:
-      print('>', output)
+      print("[SetWindowTitle] Debug: result: ", output)
