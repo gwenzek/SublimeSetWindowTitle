@@ -8,7 +8,7 @@ WAS_DIRTY = "set_window_title_was_dirty"
 PLATFORM = sublime.platform()
 
 if PLATFORM == 'windows':
-  
+
   class Window:
     import ctypes as c
     u = c.windll.user32
@@ -67,28 +67,32 @@ if PLATFORM == 'windows':
         cls.u.SetWindowTextW.restype = cls.c.c_bool
         cls.init_user32_done = True
 
+
+_SCRIPT_PATH_ = None
+_READY_ = False
+
+
+def plugin_loaded():
+  """Finds the script path and run the script for each window.
+
+  Called by ST once this plugin has been fully loaded.
+  """
+  packages_path = sublime.packages_path()
+
+  if PLATFORM == 'linux':
+    global _SCRIPT_PATH_
+    _SCRIPT_PATH_ = os.path.join(packages_path, __package__,
+                                 "fix_window_title.sh")
+
+  global _READY_
+  _READY_ = True
+
+  title_setter = SetWindowTitle()
+  for window in sublime.windows():
+    title_setter.run(window.active_view())
+
 class SetWindowTitle(EventListener):
-
-  script_path = None
-  ready = False
-
-  def __init__(self):
-    sublime.set_timeout_async(self.on_sublime_started, 1000)
-    self.window_handle_cache = dict()
-
-  def on_sublime_started(self):
-    packages_path = sublime.packages_path()
-    while not packages_path:
-      packages_path = sublime.packages_path()
-      time.sleep(1)
-
-    if PLATFORM == 'linux':
-      self.script_path = os.path.join(packages_path, __package__,
-                                    "fix_window_title.sh")
-    self.ready = True
-
-    for window in sublime.windows():
-      self.run(window.active_view())
+  """Updates the window title when the selected view changes."""
 
   def on_activated_async(self, view):
     self.run(view)
@@ -101,7 +105,7 @@ class SetWindowTitle(EventListener):
     self.run(view)
 
   def run(self, view):
-    if not self.ready:
+    if not _READY_:
       print("[SetWindowTitle] Info: ST haven't finished loading yet, skipping.")
       return
 
@@ -147,10 +151,7 @@ class SetWindowTitle(EventListener):
     """Returns the new name for a view, according to the user preferences."""
     settings = sublime.load_settings("set_window_title.sublime-settings")
 
-    path = self._get_displayed_path(view, settings)
-
-    if view.file_name():
-      full_path = view.file_name()
+    path = self._pretty_path(view, settings)
 
     template = settings.get("template")
     template = self._replace_condition(template, "has_project", project,
@@ -160,7 +161,7 @@ class SetWindowTitle(EventListener):
 
     return template.format(path=path, project=project)
 
-  def _get_displayed_path(self, view, settings):
+  def _pretty_path(self, view, settings):
     view_name = view.name()
     # view.name() is set by other plugins so it's probably the best choice.
     if view_name:
@@ -201,7 +202,7 @@ class SetWindowTitle(EventListener):
     settings = sublime.load_settings("set_window_title.sublime-settings")
     debug = settings.get("debug")
     if PLATFORM == 'linux':
-      cmd = 'bash %s "%s" "%s"' % (self.script_path, official_title, new_title)
+      cmd = 'bash %s "%s" "%s"' % (_SCRIPT_PATH_, official_title, new_title)
       if debug:
         print("[SetWindowTitle] Debug: running: ", cmd)
       output = os.popen(cmd + " 1&2").read()
