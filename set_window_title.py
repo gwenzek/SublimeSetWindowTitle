@@ -7,6 +7,65 @@ from sublime_plugin import EventListener
 WAS_DIRTY = "set_window_title_was_dirty"
 PLATFORM = sublime.platform()
 
+if PLATFORM == 'windows':
+  
+  class Window:
+    import ctypes as c
+    u = c.windll.user32
+    init_user32_done = False
+    HWND = c.c_void_p
+    LPARAM = c.c_void_p
+    WNDENUMPROC = c.WINFUNCTYPE(c.c_bool, HWND, LPARAM)
+    LPCWSTR = c.POINTER(c.c_uint16)
+
+    def __init__(self, handle):
+      self.handle = handle
+      self.init_user32()
+
+    def __str__(self):
+      return "Window"
+
+    def __repr__(self):
+      return "Window({})".format(self.handle)
+
+    @property
+    def title(self):
+      # Windows encodes window titles as an array of uint16s under UTF-16
+      # To convert this to python, we cast this to an array of bytes, then decode it
+      n = self.u.GetWindowTextLengthW(self.handle)
+      t = (self.c.c_uint16 * (n+1))()
+      n2 = self.u.GetWindowTextW(self.handle, t, n+1)
+      assert n == n2
+      return self.c.POINTER(self.c.c_char)(t)[0:n2*2].decode('utf16')
+
+    @title.setter
+    def title(self, title):
+      b = title.encode('utf16')
+      n = len(b)
+      t = (self.c.c_char * (n+10))(*b)
+      self.u.SetWindowTextW(self.handle, self.LPCWSTR(t))
+
+    @classmethod
+    def all(cls):
+      handles = []
+      def cb(handle, x):
+        handles.append(handle)
+        return True
+      cls.u.EnumWindows(cls.WNDENUMPROC(cb), None)
+      return [cls(handle) for handle in handles]
+
+    @classmethod
+    def init_user32(cls):
+      if not cls.init_user32_done:
+        cls.u.EnumWindows.argtypes = [cls.WNDENUMPROC, cls.LPARAM]
+        cls.u.EnumWindows.restype = cls.c.c_bool
+        cls.u.GetWindowTextLengthW.argtypes = [cls.HWND]
+        cls.u.GetWindowTextLengthW.restype = cls.c.c_int
+        cls.u.GetWindowTextW.argtypes = [cls.HWND, cls.LPCWSTR, cls.c.c_int]
+        cls.u.GetWindowTextW.restype = cls.c.c_int
+        cls.u.SetWindowTextW.argtypes = [cls.HWND, cls.LPCWSTR]
+        cls.u.SetWindowTextW.restype = cls.c.c_bool
+        cls.init_user32_done = True
 
 class SetWindowTitle(EventListener):
 
@@ -15,6 +74,7 @@ class SetWindowTitle(EventListener):
 
   def __init__(self):
     sublime.set_timeout_async(self.on_sublime_started, 1000)
+    self.window_handle_cache = dict()
 
   def on_sublime_started(self):
     packages_path = sublime.packages_path()
@@ -49,7 +109,7 @@ class SetWindowTitle(EventListener):
 
     official_title = self.get_official_title(view, project)
     new_title = self.get_new_title(view, project, official_title)
-    self.rename_window(official_title, new_title)
+    self.rename_window(view.window(), official_title, new_title)
     view.settings().set(WAS_DIRTY, view.is_dirty())
 
   def get_project(self, view):
@@ -136,7 +196,7 @@ class SetWindowTitle(EventListener):
       replacement = settings.get(condition + "_false")
     return template.replace("{%s}" % condition, replacement)
 
-  def rename_window(self, official_title, new_title):
+  def rename_window(self, window, official_title, new_title):
     """Rename a subl window using the fix_window_title.sh script."""
     settings = sublime.load_settings("set_window_title.sublime-settings")
     debug = settings.get("debug")
@@ -148,83 +208,11 @@ class SetWindowTitle(EventListener):
       if debug:
         print("[SetWindowTitle] Debug: result: ", output)
     elif PLATFORM == 'windows':
-      import ctypes as c
-      u = c.windll.user32
-
-      HWND = c.c_void_p
-      LPARAM = c.c_void_p
-      WNDENUMPROC = c.WINFUNCTYPE(c.c_bool, HWND, LPARAM)
-      DWORD = c.c_uint32
-      LPDWORD = c.POINTER(DWORD)
-      LPCSTR = c.POINTER(c.c_char)
-      LPCWSTR = c.POINTER(c.c_uint16)
-
-      u.GetTopWindow.argtypes = [HWND]
-      u.GetTopWindow.restype = HWND
-
-      u.EnumWindows.argtypes = [WNDENUMPROC, LPARAM]
-      u.EnumWindows.restype = c.c_bool
-
-      u.GetWindowTextLengthA.argtypes = [HWND]
-      u.GetWindowTextLengthA.restype = c.c_int
-
-      u.GetWindowTextLengthW.argtypes = [HWND]
-      u.GetWindowTextLengthW.restype = c.c_int
-
-      u.GetWindowTextA.argtypes = [HWND, LPCSTR, c.c_int]
-      u.GetWindowTextA.restype = c.c_int
-
-      u.GetWindowTextW.argtypes = [HWND, LPCWSTR, c.c_int]
-      u.GetWindowTextW.restype = c.c_int
-
-      u.SetWindowTextA.argtypes = [HWND, LPCSTR]
-      u.SetWindowTextA.restype = c.c_bool
-
-      u.SetWindowTextW.argtypes = [HWND, LPCWSTR]
-      u.SetWindowTextW.restype = c.c_bool
-
-      u.GetWindowThreadProcessId.argtypes = [HWND, LPDWORD]
-      u.GetWindowThreadProcessId.restype = DWORD
-
-      class Window:
-        def __init__(self, handle):
-          self.handle = handle
-        def __str__(self):
-          return "Window"
-        def __repr__(self):
-          return "Window({})".format(self.handle)
-        @property
-        def title(self):
-          # Windows encodes window titles as an array of uint16s under UTF-16
-          # To convert this to python, we cast this to an array of bytes, then decode it
-          n = u.GetWindowTextLengthW(self.handle)
-          t = (c.c_uint16 * (n+1))()
-          n2 = u.GetWindowTextW(self.handle, t, n+1)
-          assert n == n2
-          return c.POINTER(c.c_char)(t)[0:n2*2].decode('utf16')
-        @title.setter
-        def title(self, title):
-          b = title.encode('utf16')
-          n = len(b)
-          t = (c.c_char * (n+10))(*b)
-          u.SetWindowTextW(self.handle, LPCWSTR(t))
-        @property
-        def thread(self):
-          return u.GetWindowThreadProcessId(self.handle, None)
-        @property
-        def process(self):
-          r = DWORD()
-          u.GetWindowThreadProcessId(self.handle, LPDWORD(r))
-          return r.value
-
-      def all_windows():
-        windows = []
-        def cb(w, x):
-          windows.append(w)
-          return True
-        u.EnumWindows(WNDENUMPROC(cb), None)
-        return [Window(w) for w in windows]
-
-      for w in all_windows():
-        if official_title in w.title:
-          w.title = new_title
+      w = self.window_handle_cache.get(window.id(), None)
+      if w is None:
+        for w in Window.all():
+          if official_title in w.title:
+            w.title = new_title
+            self.window_handle_cache[window.id()] = w
+      else:
+        w.title = new_title
