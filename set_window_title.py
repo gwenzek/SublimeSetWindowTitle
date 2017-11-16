@@ -213,6 +213,6 @@ class SetWindowTitle(EventListener):
         for w in Window.all():
           if official_title in w.title:
             w.title = new_title
-            self.window_handle_cache[window.id()] = w
+            # self.window_handle_cache[window.id()] = w
       else:
         w.title = new_title
