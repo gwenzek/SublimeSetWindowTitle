@@ -10,8 +10,9 @@ This package is avalaible on [PackageControl](https://packagecontrol.io/).
 
 ## Requirement
 
-This plugin assume you are using Linux and you have installed `xdotools`.
-If you have any ideas on how to do that on MacOS or Windows, please submit a PR.
+On Windows it should work out of the box.
+On Linux the plugin assume you have installed `xdotool`.
+If you have any ideas on how to do that on MacOS, please submit a PR.
 
 ## Configuration
 
@@ -25,4 +26,8 @@ documentation.
   and rename the one with a name matching the expected name.
   If there was a reliable way to find the PID of the correct window then we could drop the `get_official_name` method, and simplify the script a lot.
 
-* For some reason some chars aren't displayed correctly.
+* For some reason some chars aren't displayed correctly (Linux).
+
+## Thanks
+
+Thanks to [cjdoris](https://github.com/cjdoris) for implementing Windows support.
