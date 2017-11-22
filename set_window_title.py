@@ -7,8 +7,20 @@ from sublime_plugin import EventListener
 WAS_DIRTY = "set_window_title_was_dirty"
 PLATFORM = sublime.platform()
 
-if PLATFORM == 'windows':
-  
+if PLATFORM == 'linux':
+  # xdotool script to find all windows pid matching a given name.
+  # Note: it would be simpler if there was an API to get the pid
+  # of a given Sublime window.
+  SCRIPT = """
+pids=$(xdotool search --class --onlyvisible subl)
+for pid in $pids; do
+    if [[ $(xdotool getwindowname $pid) == *"$1" ]]; then
+        echo $pid
+    fi
+done
+"""
+elif PLATFORM == 'windows':
+
   class Window:
     import ctypes as c
     u = c.windll.user32
@@ -46,7 +58,7 @@ if PLATFORM == 'windows':
       self.u.SetWindowTextW(self.handle, self.LPCWSTR(t))
 
     @classmethod
-    def all(cls):
+    def list_all(cls):
       handles = []
       def cb(handle, x):
         handles.append(handle)
@@ -67,28 +79,32 @@ if PLATFORM == 'windows':
         cls.u.SetWindowTextW.restype = cls.c.c_bool
         cls.init_user32_done = True
 
+
+_SCRIPT_PATH_ = None
+_READY_ = False
+
+def plugin_loaded():
+  """Finds the script path and run the script for each window.
+
+  Called by ST once this plugin has been fully loaded.
+  """
+  if PLATFORM == 'linux':
+    global _SCRIPT_PATH_
+    _SCRIPT_PATH_ = os.path.join(sublime.cache_path(),
+                                 "list_window_with_title.sh")
+    with open(_SCRIPT_PATH_, 'w') as o:
+      o.write(SCRIPT)
+
+  global _READY_
+  _READY_ = True
+
+  title_setter = SetWindowTitle()
+  for window in sublime.windows():
+    title_setter.run(window.active_view())
+
 class SetWindowTitle(EventListener):
-
-  script_path = None
-  ready = False
-
-  def __init__(self):
-    sublime.set_timeout_async(self.on_sublime_started, 1000)
-    self.window_handle_cache = dict()
-
-  def on_sublime_started(self):
-    packages_path = sublime.packages_path()
-    while not packages_path:
-      packages_path = sublime.packages_path()
-      time.sleep(1)
-
-    if PLATFORM == 'linux':
-      self.script_path = os.path.join(packages_path, __package__,
-                                    "fix_window_title.sh")
-    self.ready = True
-
-    for window in sublime.windows():
-      self.run(window.active_view())
+  """Updates the window title when the selected view changes."""
+  window_handle_cache = {}
 
   def on_activated_async(self, view):
     self.run(view)
@@ -101,7 +117,7 @@ class SetWindowTitle(EventListener):
     self.run(view)
 
   def run(self, view):
-    if not self.ready:
+    if not _READY_:
       print("[SetWindowTitle] Info: ST haven't finished loading yet, skipping.")
       return
 
@@ -147,10 +163,7 @@ class SetWindowTitle(EventListener):
     """Returns the new name for a view, according to the user preferences."""
     settings = sublime.load_settings("set_window_title.sublime-settings")
 
-    path = self._get_displayed_path(view, settings)
-
-    if view.file_name():
-      full_path = view.file_name()
+    path = self._pretty_path(view, settings)
 
     template = settings.get("template")
     template = self._replace_condition(template, "has_project", project,
@@ -160,7 +173,7 @@ class SetWindowTitle(EventListener):
 
     return template.format(path=path, project=project)
 
-  def _get_displayed_path(self, view, settings):
+  def _pretty_path(self, view, settings):
     view_name = view.name()
     # view.name() is set by other plugins so it's probably the best choice.
     if view_name:
@@ -198,21 +211,55 @@ class SetWindowTitle(EventListener):
 
   def rename_window(self, window, official_title, new_title):
     """Rename a subl window using the fix_window_title.sh script."""
+    if not window:
+      return
     settings = sublime.load_settings("set_window_title.sublime-settings")
     debug = settings.get("debug")
     if PLATFORM == 'linux':
-      cmd = 'bash %s "%s" "%s"' % (self.script_path, official_title, new_title)
-      if debug:
-        print("[SetWindowTitle] Debug: running: ", cmd)
-      output = os.popen(cmd + " 1&2").read()
-      if debug:
-        print("[SetWindowTitle] Debug: result: ", output)
+      self.rename_window_linux(window, official_title, new_title, debug)
     elif PLATFORM == 'windows':
-      w = self.window_handle_cache.get(window.id(), None)
-      if w is None:
-        for w in Window.all():
-          if official_title in w.title:
-            w.title = new_title
-            # self.window_handle_cache[window.id()] = w
-      else:
-        w.title = new_title
+      self.rename_window_windows(window, official_title, new_title)
+
+  def rename_window_linux(self, window, official_title, new_title, debug=False):
+    pid = self.window_handle_cache.get(window.id())
+    pids = [pid]
+    if not pid:
+      # Get pids of ST windows with a title similar to this one.
+      if debug:
+        print(
+          "[SetWindowTitle] Debug: Looking for window '%s'" % official_title)
+      cmd = 'bash "%s" "%s"' % (_SCRIPT_PATH_, official_title)
+      pids = [
+          int(line.strip())
+          for line in os.popen(cmd).read().split('\n')
+          if line
+      ]
+      if debug:
+        print("[SetWindowTitle] Debug: pids found:", pids)
+      
+      # Cache if we found exactly one pid for this window.
+      if len(pids) == 1:
+        self.window_handle_cache[window.id()] = pids[0]
+    elif debug:
+      print("[SetWindowTitle] Debug: Using pid", pid, "for window", window.id())
+    
+    if pids:
+      for pid in pids:
+        # If all the window have the same title, then we can assume it's safe
+        # to rename all of them with the new title. Also renaming will allow 
+        # to find the correct pids the next time ST will try to change the
+        # title of one of the windows.
+        output = os.popen('xdotool set_window --name "%s" %d 2>&1' % (
+            new_title, pid)).read()
+        if output:
+          print("[SetWindowTitle] Error: Failure when renaming:", output)
+  
+  def rename_window_windows(self, window, official_title, new_title):
+    w = self.window_handle_cache.get(window.id(), None)
+    if w is None:
+      for w in Window.list_all():
+        if w.title.endswith(official_title):
+          w.title = new_title
+          # self.window_handle_cache[window.id()] = w
+    else:
+      w.title = new_title

@@ -29,5 +29,5 @@
   "untitled": "<untitled>",
 
   // Output some debug info in the console.
-  "debug": false,
+  "debug": true,
 }
