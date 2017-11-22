@@ -180,7 +180,7 @@ class SetWindowTitle(EventListener):
       window = view.window()
       folders = window.folders() if window else None
       root = folders[0] if folders else None
-      rel_path = os.path.relpath(full_path, root) if root else full_path
+      rel_path = os.path.relpath(full_path, root) if root and os.path.splitdrive(full_path)[0] == os.path.splitdrive(root)[0] else full_path
 
     if display == "full":
       return full_path
