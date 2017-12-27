@@ -21,12 +21,17 @@ documentation.
 
 ## Room for improvement
 
-* Currently the bash script that modifies the window title needs the PID of the 
-  target window. As there is no ST API for that, the script list all ST windows
-  and rename the one with a name matching the expected name.
-  If there was a reliable way to find the PID of the correct window then we could drop the `get_official_name` method, and simplify the script a lot.
+* Currently the code that modifies the window title needs the PID of the 
+  target window. As there is no ST API for that, we list all ST windows and
+  rename the one with a name matching the expected name.
+  If there was a reliable way to find the PID of the correct window then we
+  could drop the `get_official_name` method, and simplify the plugin a lot.
 
-* For some reason some chars aren't displayed correctly (Linux).
+* (Linux) For some reason some chars aren't displayed correctly.
+
+* (Windows) The plugin is more brittle on Windows, some features have been
+disabled as a consequence. If you have knowledge of the `user32` API we might
+use your help !
 
 ## Thanks
 
