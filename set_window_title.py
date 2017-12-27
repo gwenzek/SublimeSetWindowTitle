@@ -98,9 +98,13 @@ def plugin_loaded():
   global _READY_
   _READY_ = True
 
-  title_setter = SetWindowTitle()
-  for window in sublime.windows():
-    title_setter.run(window.active_view())
+  if PLATFORM == 'linux':
+    # Set the title when the plugin is loaded.
+    # Only enabled on Linux because for some reason it freezes ST on Windows.
+    # TODO: Find how to enable a similar behavior on Windows.
+    title_setter = SetWindowTitle()
+    for window in sublime.windows():
+      title_setter.run(window.active_view())
 
 class SetWindowTitle(EventListener):
   """Updates the window title when the selected view changes."""
@@ -236,30 +240,31 @@ class SetWindowTitle(EventListener):
       ]
       if debug:
         print("[SetWindowTitle] Debug: pids found:", pids)
-      
+
       # Cache if we found exactly one pid for this window.
       if len(pids) == 1:
         self.window_handle_cache[window.id()] = pids[0]
     elif debug:
       print("[SetWindowTitle] Debug: Using pid", pid, "for window", window.id())
-    
+
     if pids:
       for pid in pids:
         # If all the window have the same title, then we can assume it's safe
-        # to rename all of them with the new title. Also renaming will allow 
+        # to rename all of them with the new title. Also renaming will allow
         # to find the correct pids the next time ST will try to change the
         # title of one of the windows.
         output = os.popen('xdotool set_window --name "%s" %d 2>&1' % (
             new_title, pid)).read()
         if output:
           print("[SetWindowTitle] Error: Failure when renaming:", output)
-  
+
   def rename_window_windows(self, window, official_title, new_title):
     w = self.window_handle_cache.get(window.id(), None)
     if w is None:
       for w in Window.list_all():
         if w.title.endswith(official_title):
           w.title = new_title
+          # TODO: Understand why caching the windows handle cause crashes.
           # self.window_handle_cache[window.id()] = w
     else:
       w.title = new_title
