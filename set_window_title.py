@@ -1,4 +1,4 @@
-import sublime
+﻿import sublime
 
 import os
 import time
@@ -161,6 +161,10 @@ class SetWindowTitle(EventListener):
     if project:
       official_title += " (%s)" % project
     official_title += " - Sublime Text"
+    settings = sublime.load_settings("set_window_title.sublime-settings")
+    if settings.get("unregistered", False):
+      official_title += " (UNREGISTERED)"
+
     return official_title
 
   def get_new_title(self, view, project, old_title):
@@ -174,8 +178,10 @@ class SetWindowTitle(EventListener):
                                        settings)
     template = self._replace_condition(template, "is_dirty",
                                        view.is_dirty(), settings)
-
-    return template.format(path=path, project=project)
+    new_title = template.format(path=path, project=project)
+    if settings.get("unregistered", False):
+      new_title += " (UNREGISTERED)"
+    return new_title
 
   def _pretty_path(self, view, settings):
     view_name = view.name()

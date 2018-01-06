@@ -1,4 +1,7 @@
 {
+  // Are you using an unregistered version of Sublime ?
+  "unregistered": false,
+
   // Template for the window title.
   // The template accept the following parameters:
   // - {path}: the path of the current file
@@ -29,5 +32,5 @@
   "untitled": "<untitled>",
 
   // Output some debug info in the console.
-  "debug": true,
+  "debug": false,
 }
