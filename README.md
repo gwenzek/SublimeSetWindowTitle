@@ -23,6 +23,11 @@ documentation.
 
 ## Room for improvement
 
+* Doesn't work with workspaces, it would be easy to implement if ST had a
+better API for this (relevant issues:
+[826](https://github.com/SublimeTextIssues/Core/issues/826),
+[5](https://github.com/gwenzek/SublimeSetWindowTitle/issues/5))
+
 * Currently the code that modifies the window title needs the PID of the 
   target window. As there is no ST API for that, we list all ST windows and
   rename the one with a name matching the expected name.
