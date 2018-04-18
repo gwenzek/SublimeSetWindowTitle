@@ -1,4 +1,4 @@
-﻿import sublime
+import sublime
 
 import os
 import time
