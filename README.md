@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/gwenzek/SublimeSetWindowTitle.svg?branch=master)](https://travis-ci.org/gwenzek/SublimeSetWindowTitle)
+
 ## Overview
 
 This plugin allows you to configure the title of your Sublime Text windows.
@@ -13,7 +15,7 @@ setting "unregistered" to `true` (or to buy a license!).
 ## Requirement
 
 On Windows it should work out of the box.
-On Linux the plugin assume you have installed `xdotool`.
+On Linux the plugin assumes you have installed `xdotool`.
 If you have any ideas on how to do that on MacOS, please submit a PR.
 
 ## Configuration
@@ -28,7 +30,7 @@ better API for this (relevant issues:
 [826](https://github.com/SublimeTextIssues/Core/issues/826),
 [5](https://github.com/gwenzek/SublimeSetWindowTitle/issues/5))
 
-* Currently the code that modifies the window title needs the PID of the 
+* Currently the code that modifies the window title needs the PID of the
   target window. As there is no ST API for that, we list all ST windows and
   rename the one with a name matching the expected name.
   If there was a reliable way to find the PID of the correct window then we
