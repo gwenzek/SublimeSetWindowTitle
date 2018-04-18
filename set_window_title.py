@@ -7,7 +7,7 @@ from sublime_plugin import EventListener
 WAS_DIRTY = "set_window_title_was_dirty"
 PLATFORM = sublime.platform()
 
-if PLATFORM == 'linux':
+if PLATFORM == "linux":
   # xdotool script to find all windows pid matching a given name.
   # Note: it would be simpler if there was an API to get the pid
   # of a given Sublime window.
@@ -19,10 +19,11 @@ for pid in $pids; do
     fi
 done
 """
-elif PLATFORM == 'windows':
+elif PLATFORM == "windows":
+  import ctypes as c
 
   class Window:
-    import ctypes as c
+    """Represents a window handle under Windows OS."""
     u = c.windll.user32
     init_user32_done = False
     HWND = c.c_void_p
@@ -43,16 +44,17 @@ elif PLATFORM == 'windows':
     @property
     def title(self):
       # Windows encodes window titles as an array of uint16s under UTF-16
-      # To convert this to python, we cast this to an array of bytes, then decode it
+      # To convert this to python, we cast this to an array of bytes,
+      # then decode it
       n = self.u.GetWindowTextLengthW(self.handle)
       t = (self.c.c_uint16 * (n+1))()
       n2 = self.u.GetWindowTextW(self.handle, t, n+1)
       assert n == n2
-      return self.c.POINTER(self.c.c_char)(t)[0:n2*2].decode('utf16')
+      return self.c.POINTER(self.c.c_char)(t)[0:n2*2].decode("utf16")
 
     @title.setter
     def title(self, title):
-      b = title.encode('utf16')
+      b = title.encode("utf16")
       n = len(b)
       t = (self.c.c_char * (n+10))(*b)
       self.u.SetWindowTextW(self.handle, self.LPCWSTR(t))
@@ -60,7 +62,7 @@ elif PLATFORM == 'windows':
     @classmethod
     def list_all(cls):
       handles = []
-      def cb(handle, x):
+      def cb(handle, _):
         handles.append(handle)
         return True
       cls.u.EnumWindows(cls.WNDENUMPROC(cb), None)
@@ -83,28 +85,30 @@ elif PLATFORM == 'windows':
 _SCRIPT_PATH_ = None
 _READY_ = False
 
+
 def plugin_loaded():
   """Finds the script path and run the script for each window.
 
   Called by ST once this plugin has been fully loaded.
   """
-  if PLATFORM == 'linux':
+  if PLATFORM == "linux":
     global _SCRIPT_PATH_
     _SCRIPT_PATH_ = os.path.join(sublime.cache_path(),
                                  "list_window_with_title.sh")
-    with open(_SCRIPT_PATH_, 'w') as o:
+    with open(_SCRIPT_PATH_, "w") as o:
       o.write(SCRIPT)
 
   global _READY_
   _READY_ = True
 
-  if PLATFORM == 'linux':
+  if PLATFORM == "linux":
     # Set the title when the plugin is loaded.
     # Only enabled on Linux because for some reason it freezes ST on Windows.
     # TODO: Find how to enable a similar behavior on Windows.
     title_setter = SetWindowTitle()
     for window in sublime.windows():
       title_setter.run(window.active_view())
+
 
 class SetWindowTitle(EventListener):
   """Updates the window title when the selected view changes."""
@@ -171,58 +175,16 @@ class SetWindowTitle(EventListener):
     """Returns the new name for a view, according to the user preferences."""
     settings = sublime.load_settings("set_window_title.sublime-settings")
 
-    path = self._pretty_path(view, settings)
+    path = _pretty_path(view, settings)
 
     template = settings.get("template")
-    template = self._replace_condition(template, "has_project", project,
-                                       settings)
-    template = self._replace_condition(template, "is_dirty",
-                                       view.is_dirty(), settings)
+    template = _replace_condition(template, "has_project", project, settings)
+    template = _replace_condition(template, "is_dirty", view.is_dirty(),
+                                  settings)
     new_title = template.format(path=path, project=project)
     if settings.get("unregistered", False):
       new_title += " (UNREGISTERED)"
     return new_title
-
-  def _pretty_path(self, view, settings):
-    view_name = view.name()
-    # view.name() is set by other plugins so it's probably the best choice.
-    if view_name:
-      return view_name
-
-    full_path = view.file_name()
-    if not full_path:
-      return settings.get("untitled", "untitled")
-
-    display = settings.get("path_display")
-    if display in ("full", "shortest"):
-      home = os.environ.get("HOME")
-      if home and full_path.startswith(home):
-        full_path = "~" + full_path[len(home):]
-
-    if display in ("relative", "shortest"):
-      window = view.window()
-      folders = window.folders() if window else None
-      root = folders[0] if folders else None
-      
-      # check that the two path are on the same drive.
-      if root and os.path.splitdrive(full_path)[0] == os.path.splitdrive(root)[0]:
-        rel_path = os.path.relpath(full_path, root)
-      else:
-        rel_path = full_path
-
-    if display == "full":
-      return full_path
-    elif display == "relative":
-      return rel_path
-    else:  # default to "shortest"
-      return full_path if len(full_path) <= len(rel_path) else rel_path
-
-  def _replace_condition(self, template, condition, value, settings):
-    if value:
-      replacement = settings.get(condition + "_true")
-    else:
-      replacement = settings.get(condition + "_false")
-    return template.replace("{%s}" % condition, replacement)
 
   def rename_window(self, window, official_title, new_title):
     """Rename a subl window using the fix_window_title.sh script."""
@@ -230,9 +192,9 @@ class SetWindowTitle(EventListener):
       return
     settings = sublime.load_settings("set_window_title.sublime-settings")
     debug = settings.get("debug")
-    if PLATFORM == 'linux':
+    if PLATFORM == "linux":
       self.rename_window_linux(window, official_title, new_title, debug)
-    elif PLATFORM == 'windows':
+    elif PLATFORM == "windows":
       self.rename_window_windows(window, official_title, new_title)
 
   def rename_window_linux(self, window, official_title, new_title, debug=False):
@@ -242,11 +204,11 @@ class SetWindowTitle(EventListener):
       # Get pids of ST windows with a title similar to this one.
       if debug:
         print(
-          "[SetWindowTitle] Debug: Looking for window '%s'" % official_title)
+            "[SetWindowTitle] Debug: Looking for window '%s'" % official_title)
       cmd = 'bash "%s" "%s"' % (_SCRIPT_PATH_, official_title)
       pids = [
           int(line.strip())
-          for line in os.popen(cmd).read().split('\n')
+          for line in os.popen(cmd).read().split("\n")
           if line
       ]
       if debug:
@@ -279,3 +241,53 @@ class SetWindowTitle(EventListener):
           # self.window_handle_cache[window.id()] = w
     else:
       w.title = new_title
+
+
+def _pretty_path(view, settings):
+  """Computes a nice path to display for a given view."""
+  view_name = view.name()
+  # view.name() is set by other plugins so it's probably the best choice.
+  if view_name:
+    return view_name
+
+  full_path = view.file_name()
+  if not full_path:
+    return settings.get("untitled", "untitled")
+
+  display = settings.get("path_display")
+  if display in ("relative", "shortest"):
+    window = view.window()
+    folders = window.folders() if window else None
+    root = folders[0] if folders else None
+
+    # check that the two path are on the same drive.
+    if root and _same_drive(full_path, root):
+      rel_path = os.path.relpath(full_path, root)
+    else:
+      rel_path = full_path
+
+  if display in ("full", "shortest"):
+    home = os.environ.get("HOME")
+    if home and full_path.startswith(home):
+      full_path = "~" + full_path[len(home):]
+
+  if display == "full":
+    return full_path
+  elif display == "relative":
+    return rel_path
+  else:  # default to "shortest"
+    return full_path if len(full_path) <= len(rel_path) else rel_path
+
+
+def _same_drive(file1, file2):
+  if not file1 or not file2:
+    return False
+  return os.path.splitdrive(file1)[0] == os.path.splitdrive(file2)[0]
+
+
+def _replace_condition(template, condition, value, settings):
+  if value:
+    replacement = settings.get(condition + "_true")
+  else:
+    replacement = settings.get(condition + "_false")
+  return template.replace("{%s}" % condition, replacement)
