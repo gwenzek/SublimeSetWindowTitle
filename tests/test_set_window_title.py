@@ -4,7 +4,7 @@ import sys
 import unittest
 from unittest import mock
 
-swt = sys.modules["STSetWindowTitle.set_window_title"]
+swt = sys.modules["SetWindowTitle.set_window_title"]
 
 
 def with_windows_os_path(fun):
@@ -115,10 +115,10 @@ class FakeView:
     self.window_ = FakeWindow([root_folder] if root_folder else [])
 
   def name(self):
-    return self.view_name
+    return self.name_
 
   def file_name(self):
-    return self.view_file_name
+    return self.file_name_
 
   def window(self):
     return self.window_

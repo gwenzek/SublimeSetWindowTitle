@@ -254,6 +254,10 @@ def _pretty_path(view, settings):
   if not full_path:
     return settings.get("untitled", "untitled")
 
+  home = os.environ.get("HOME")
+  if home and full_path.startswith(home):
+    full_path = "~" + full_path[len(home):]
+
   display = settings.get("path_display")
   if display in ("relative", "shortest"):
     window = view.window()
@@ -261,22 +265,20 @@ def _pretty_path(view, settings):
     root = folders[0] if folders else None
 
     # check that the two path are on the same drive.
-    if root and _same_drive(full_path, root):
-      rel_path = os.path.relpath(full_path, root)
+    # Use the non shortened path to have the drive information.
+    original_path = view.file_name()
+    if root and _same_drive(original_path, root):
+      rel_path = os.path.relpath(original_path, root)
     else:
       rel_path = full_path
 
-  if display in ("full", "shortest"):
-    home = os.environ.get("HOME")
-    if home and full_path.startswith(home):
-      full_path = "~" + full_path[len(home):]
-
-  if display == "full":
-    return full_path
-  elif display == "relative":
+  if display == "relative":
     return rel_path
-  else:  # default to "shortest"
+  elif display == "shortest":
     return full_path if len(full_path) <= len(rel_path) else rel_path
+  else:
+    # default to "full", this one is always set.
+    return full_path
 
 
 def _same_drive(file1, file2):
