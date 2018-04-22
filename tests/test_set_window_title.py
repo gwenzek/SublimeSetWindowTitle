@@ -39,7 +39,7 @@ class TestStringMethods(unittest.TestCase):
     settings = {"path_display": "relative"}
     root = "/home/hacker/Github/Project"
     filename = "/home/hacker/Github/Project/hacking_like_a_boss.py"
-    view = FakeView("SecretProject", root, filename)
+    view = FakeView(filename, root)
 
     self.assertEqual("hacking_like_a_boss.py", swt._pretty_path(view, settings))
 
@@ -48,24 +48,24 @@ class TestStringMethods(unittest.TestCase):
     settings = {"path_display": "relative"}
     root = "C:/home/hacker/Github/Project"
     filename = "D:/somewhere_else/hacking_like_a_boss.py"
-    view = FakeView("SecretProject", root, filename)
+    view = FakeView(filename, root)
 
     self.assertEqual(filename, swt._pretty_path(view, settings))
 
   def test_rel_path_outside_of_project(self):
     settings = {"path_display": "relative"}
-    filename = "/home/hacker/Github/Project/hacking_like_a_boss.py"
-    view = FakeView("SecretProject", None, filename)
+    root = "/home/hacker/Github/Project"
+    filename = "/home/hacker/Github/AnotherProject/hacking_for_dummies.py"
+    view = FakeView(filename, root)
 
-    self.assertEqual("~/Github/Project/hacking_like_a_boss.py",
+    self.assertEqual("../AnotherProject/hacking_for_dummies.py",
                      swt._pretty_path(view, settings))
 
   def test_use_view_name_when_available(self):
     settings = {"path_display": "full"}
-    root = "/home/hacker/Github/Project"
     filename = "/home/hacker/Github/Project/hacking_like_a_boss.py"
     name = "H4CK3D"
-    view = FakeView("SecretProject", root, filename, name)
+    view = FakeView(filename, name=name)
 
     self.assertEqual(name, swt._pretty_path(view, settings))
 
@@ -73,16 +73,7 @@ class TestStringMethods(unittest.TestCase):
     settings = {"path_display": "full"}
     root = "/home/hacker/Github/Project"
     filename = "/home/hacker/Github/Project/hacking_like_a_boss.py"
-    view = FakeView("SecretProject", root, filename)
-
-    self.assertEqual("~/Github/Project/hacking_like_a_boss.py",
-                     swt._pretty_path(view, settings))
-
-  def test_full_path_abb(self):
-    settings = {"path_display": "full"}
-    root = "/home/hacker/Github/Project"
-    filename = "/home/hacker/Github/Project/hacking_like_a_boss.py"
-    view = FakeView("SecretProject", root, filename)
+    view = FakeView(filename, root)
 
     self.assertEqual("~/Github/Project/hacking_like_a_boss.py",
                      swt._pretty_path(view, settings))
@@ -91,7 +82,7 @@ class TestStringMethods(unittest.TestCase):
     settings = {"path_display": "shortest"}
     root = "/home/hacker/Github/Project"
     filename = "/home/hacker/another_place/hacking_like_a_boss.py"
-    view = FakeView("SecretProject", root, filename)
+    view = FakeView(filename, root)
 
     self.assertEqual("~/another_place/hacking_like_a_boss.py",
                      swt._pretty_path(view, settings))
@@ -100,19 +91,60 @@ class TestStringMethods(unittest.TestCase):
     settings = {"path_display": "shortest"}
     root = "/home/hacker/Github/Project"
     filename = "/home/hacker/Github/AnotherProject/hacking_like_a_boss.py"
-    view = FakeView("SecretProject", root, filename)
+    view = FakeView(filename, root)
 
     self.assertEqual("../AnotherProject/hacking_like_a_boss.py",
                      swt._pretty_path(view, settings))
 
+  def test_official_title(self):
+    settings = {}
+    view = FakeView("/home/hacker/Github/Project/hacking_like_a_boss.py")
+
+    self.assertEqual("hacking_like_a_boss.py (Project) - Sublime Text",
+                     swt.get_official_title(view, "Project", settings))
+
+  def test_new_title(self):
+    settings = {
+        "path_display": "relative",
+        "template": "({project}) {path} - ST"
+    }
+    root = "/home/hacker/Github/Project"
+    filename = "/home/hacker/Github/Project/hacking_like_a_boss.py"
+    view = FakeView(filename, root)
+
+    self.assertEqual("(Project) hacking_like_a_boss.py - ST",
+                     swt.get_new_title(view, "Project", settings))
+
+  def test_new_title_with_has_project(self):
+    settings = {
+        "path_display": "relative",
+        "template": "{has_project} {path} - ST",
+        "has_project_false": "!!!",
+        "has_project_true": "({project})"
+    }
+    root = "/home/hacker/Github/Project"
+    filename = "/".join([root, "hacking_like_a_boss.py"])
+    view = FakeView(filename, root)
+
+    self.assertEqual("(Project) hacking_like_a_boss.py - ST",
+                     swt.get_new_title(view, "Project", settings))
+
+    self.assertEqual("!!! hacking_like_a_boss.py - ST",
+                     swt.get_new_title(view, None, settings))
+
 
 class FakeView:
 
-  def __init__(self, project_name, root_folder, file_name, name=None):
-    self.project_name = project_name
+  def __init__(
+      self,
+      file_name,
+      root_folder=None,
+      name=None,
+      dirty=False):
     self.file_name_ = file_name
-    self.name_ = name
     self.window_ = FakeWindow([root_folder] if root_folder else [])
+    self.name_ = name
+    self.dirty_ = dirty
 
   def name(self):
     return self.name_
@@ -122,6 +154,9 @@ class FakeView:
 
   def window(self):
     return self.window_
+
+  def is_dirty(self):
+    return self.dirty_
 
 
 class FakeWindow:

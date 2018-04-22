@@ -129,11 +129,12 @@ class SetWindowTitle(EventListener):
       print("[SetWindowTitle] Info: ST haven't finished loading yet, skipping.")
       return
 
+    settings = sublime.load_settings("set_window_title.sublime-settings")
     project = self.get_project(view)
 
-    official_title = self.get_official_title(view, project)
-    new_title = self.get_new_title(view, project, official_title)
-    self.rename_window(view.window(), official_title, new_title)
+    official_title = get_official_title(view, project, settings)
+    new_title = get_new_title(view, project, settings)
+    self.rename_window(view.window(), official_title, new_title, settings)
     view.settings().set(WAS_DIRTY, view.is_dirty())
 
   def get_project(self, view):
@@ -152,45 +153,10 @@ class SetWindowTitle(EventListener):
 
     return project
 
-  def get_official_title(self, view, project):
-    """Returns the official name for a given view.
-
-    Note: The full file path isn't computed,
-    because ST uses `~` to shorten the path.
-    """
-    view_name = view.name() or view.file_name() or "untitled"
-    official_title = os.path.basename(view_name)
-    if view.is_dirty():
-      official_title += " •"
-    if project:
-      official_title += " (%s)" % project
-    official_title += " - Sublime Text"
-    settings = sublime.load_settings("set_window_title.sublime-settings")
-    if settings.get("unregistered", False):
-      official_title += " (UNREGISTERED)"
-
-    return official_title
-
-  def get_new_title(self, view, project, old_title):
-    """Returns the new name for a view, according to the user preferences."""
-    settings = sublime.load_settings("set_window_title.sublime-settings")
-
-    path = _pretty_path(view, settings)
-
-    template = settings.get("template")
-    template = _replace_condition(template, "has_project", project, settings)
-    template = _replace_condition(template, "is_dirty", view.is_dirty(),
-                                  settings)
-    new_title = template.format(path=path, project=project)
-    if settings.get("unregistered", False):
-      new_title += " (UNREGISTERED)"
-    return new_title
-
-  def rename_window(self, window, official_title, new_title):
+  def rename_window(self, window, official_title, new_title, settings):
     """Rename a subl window using the fix_window_title.sh script."""
     if not window:
       return
-    settings = sublime.load_settings("set_window_title.sublime-settings")
     debug = settings.get("debug")
     if PLATFORM == "linux":
       self.rename_window_linux(window, official_title, new_title, debug)
@@ -243,6 +209,39 @@ class SetWindowTitle(EventListener):
       w.title = new_title
 
 
+def get_official_title(view, project, settings):
+  """Returns the official name for a given view.
+
+  Note: The full file path isn't computed,
+  because ST uses `~` to shorten the path.
+  """
+  view_name = view.name() or view.file_name() or "untitled"
+  official_title = os.path.basename(view_name)
+  if view.is_dirty():
+    official_title += " •"
+  if project:
+    official_title += " (%s)" % project
+  official_title += " - Sublime Text"
+  if settings.get("unregistered", False):
+    official_title += " (UNREGISTERED)"
+
+  return official_title
+
+
+def get_new_title(view, project, settings):
+  """Returns the new name for a view, according to the user preferences."""
+  path = _pretty_path(view, settings)
+
+  template = settings.get("template")
+  template = _replace_condition(template, "has_project", project, settings)
+  template = _replace_condition(template, "is_dirty", view.is_dirty(),
+                                settings)
+  new_title = template.format(path=path, project=project)
+  if settings.get("unregistered", False):
+    new_title += " (UNREGISTERED)"
+  return new_title
+
+
 def _pretty_path(view, settings):
   """Computes a nice path to display for a given view."""
   view_name = view.name()
@@ -292,4 +291,7 @@ def _replace_condition(template, condition, value, settings):
     replacement = settings.get(condition + "_true")
   else:
     replacement = settings.get(condition + "_false")
-  return template.replace("{%s}" % condition, replacement)
+  if replacement:
+    return template.replace("{%s}" % condition, replacement)
+  else:
+    return template
