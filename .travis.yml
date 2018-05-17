@@ -24,7 +24,7 @@ before_install:
 install:
     # bootstrap the testing environment
     - sh travis.sh bootstrap
-    # install Package Control and package denepdencies
+    # install Package Control and package dependencies
     # - sh travis.sh install_package_control
 
 script:
