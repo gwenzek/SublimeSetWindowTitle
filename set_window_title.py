@@ -146,7 +146,7 @@ class SetWindowTitle(EventListener):
     project = window.project_file_name()
     if not project:
       folders = window.folders()
-      project = folders[0] if folders else ""
+      project = folders[0] if folders else None
     if project:
       project = os.path.basename(project)
       project = os.path.splitext(project)[0]
@@ -236,7 +236,7 @@ def get_new_title(view, project, settings):
   template = _replace_condition(template, "has_project", project, settings)
   template = _replace_condition(template, "is_dirty", view.is_dirty(),
                                 settings)
-  new_title = template.format(path=path, project=project)
+  new_title = template.format(path=path or "", project=project or "")
   if settings.get("unregistered", False):
     new_title += " (UNREGISTERED)"
   return new_title
@@ -291,7 +291,4 @@ def _replace_condition(template, condition, value, settings):
     replacement = settings.get(condition + "_true")
   else:
     replacement = settings.get(condition + "_false")
-  if replacement:
-    return template.replace("{%s}" % condition, replacement)
-  else:
-    return template
+  return template.replace("{%s}" % condition, replacement or "")
