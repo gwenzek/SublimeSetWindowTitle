@@ -20,20 +20,20 @@ for pid in $pids; do
 done
 """
 elif PLATFORM == "windows":
-  import ctypes as c
+  import ctypes
+  HWND = ctypes.c_void_p
+  LPARAM = ctypes.c_void_p
+  WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, HWND, LPARAM)
+  LPCWSTR = ctypes.POINTER(ctypes.c_uint16)
 
   class Window:
     """Represents a window handle under Windows OS."""
-    u = c.windll.user32
-    init_user32_done = False
-    HWND = c.c_void_p
-    LPARAM = c.c_void_p
-    WNDENUMPROC = c.WINFUNCTYPE(c.c_bool, HWND, LPARAM)
-    LPCWSTR = c.POINTER(c.c_uint16)
+    user32 = None
 
     def __init__(self, handle):
       self.handle = handle
-      self.init_user32()
+      if self.user32 is None:
+        self.user32 = self.init_user32()
 
     def __str__(self):
       return "Window"
@@ -46,18 +46,18 @@ elif PLATFORM == "windows":
       # Windows encodes window titles as an array of uint16s under UTF-16
       # To convert this to python, we cast this to an array of bytes,
       # then decode it
-      n = self.u.GetWindowTextLengthW(self.handle)
-      t = (self.c.c_uint16 * (n+1))()
-      n2 = self.u.GetWindowTextW(self.handle, t, n+1)
+      n = self.user32.GetWindowTextLengthW(self.handle)
+      t = (ctypes.c_uint16 * (n+1))()
+      n2 = self.user32.GetWindowTextW(self.handle, t, n+1)
       assert n == n2
-      return self.c.POINTER(self.c.c_char)(t)[0:n2*2].decode("utf16")
+      return ctypes.POINTER(ctypes.c_char)(t)[0:n2*2].decode("utf16")
 
     @title.setter
     def title(self, title):
       b = title.encode("utf16")
       n = len(b)
-      t = (self.c.c_char * (n+10))(*b)
-      self.u.SetWindowTextW(self.handle, self.LPCWSTR(t))
+      t = (ctypes.c_char * (n+10))(*b)
+      self.user32.SetWindowTextW(self.handle, LPCWSTR(t))
 
     @classmethod
     def list_all(cls):
@@ -65,21 +65,21 @@ elif PLATFORM == "windows":
       def cb(handle, _):
         handles.append(handle)
         return True
-      cls.u.EnumWindows(cls.WNDENUMPROC(cb), None)
-      return [cls(handle) for handle in handles]
+      cls.user32.EnumWindows(WNDENUMPROC(cb), None)
+      return [Window(handle) for handle in handles]
 
-    @classmethod
-    def init_user32(cls):
-      if not cls.init_user32_done:
-        cls.u.EnumWindows.argtypes = [cls.WNDENUMPROC, cls.LPARAM]
-        cls.u.EnumWindows.restype = cls.c.c_bool
-        cls.u.GetWindowTextLengthW.argtypes = [cls.HWND]
-        cls.u.GetWindowTextLengthW.restype = cls.c.c_int
-        cls.u.GetWindowTextW.argtypes = [cls.HWND, cls.LPCWSTR, cls.c.c_int]
-        cls.u.GetWindowTextW.restype = cls.c.c_int
-        cls.u.SetWindowTextW.argtypes = [cls.HWND, cls.LPCWSTR]
-        cls.u.SetWindowTextW.restype = cls.c.c_bool
-        cls.init_user32_done = True
+    @staticmethod
+    def init_user32():
+      user32 = ctypes.windll.user32
+      user32.EnumWindows.argtypes = [WNDENUMPROC, LPARAM]
+      user32.EnumWindows.restype = ctypes.c_bool
+      user32.GetWindowTextLengthW.argtypes = [HWND]
+      user32.GetWindowTextLengthW.restype = ctypes.c_int
+      user32.GetWindowTextW.argtypes = [HWND, LPCWSTR, ctypes.c_int]
+      user32.GetWindowTextW.restype = ctypes.c_int
+      user32.SetWindowTextW.argtypes = [HWND, LPCWSTR]
+      user32.SetWindowTextW.restype = ctypes.c_bool
+      return user32
 
 
 _SCRIPT_PATH_ = None
