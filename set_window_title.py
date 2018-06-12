@@ -26,14 +26,25 @@ elif PLATFORM == "windows":
   WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, HWND, LPARAM)
   LPCWSTR = ctypes.POINTER(ctypes.c_uint16)
 
+  def init_user32():
+    user32 = ctypes.windll.user32
+    user32.EnumWindows.argtypes = [WNDENUMPROC, LPARAM]
+    user32.EnumWindows.restype = ctypes.c_bool
+    user32.GetWindowTextLengthW.argtypes = [HWND]
+    user32.GetWindowTextLengthW.restype = ctypes.c_int
+    user32.GetWindowTextW.argtypes = [HWND, LPCWSTR, ctypes.c_int]
+    user32.GetWindowTextW.restype = ctypes.c_int
+    user32.SetWindowTextW.argtypes = [HWND, LPCWSTR]
+    user32.SetWindowTextW.restype = ctypes.c_bool
+    return user32
+
+  USER_32 = init_user32()
+
   class Window:
     """Represents a window handle under Windows OS."""
-    user32 = None
 
     def __init__(self, handle):
       self.handle = handle
-      if self.user32 is None:
-        self.user32 = self.init_user32()
 
     def __str__(self):
       return "Window"
@@ -46,9 +57,9 @@ elif PLATFORM == "windows":
       # Windows encodes window titles as an array of uint16s under UTF-16
       # To convert this to python, we cast this to an array of bytes,
       # then decode it
-      n = self.user32.GetWindowTextLengthW(self.handle)
+      n = USER_32.GetWindowTextLengthW(self.handle)
       t = (ctypes.c_uint16 * (n+1))()
-      n2 = self.user32.GetWindowTextW(self.handle, t, n+1)
+      n2 = USER_32.GetWindowTextW(self.handle, t, n+1)
       assert n == n2
       return ctypes.POINTER(ctypes.c_char)(t)[0:n2*2].decode("utf16")
 
@@ -57,29 +68,15 @@ elif PLATFORM == "windows":
       b = title.encode("utf16")
       n = len(b)
       t = (ctypes.c_char * (n+10))(*b)
-      self.user32.SetWindowTextW(self.handle, LPCWSTR(t))
+      USER_32.SetWindowTextW(self.handle, LPCWSTR(t))
 
-    @classmethod
-    def list_all(cls):
-      handles = []
-      def cb(handle, _):
-        handles.append(handle)
-        return True
-      cls.user32.EnumWindows(WNDENUMPROC(cb), None)
-      return [Window(handle) for handle in handles]
-
-    @staticmethod
-    def init_user32():
-      user32 = ctypes.windll.user32
-      user32.EnumWindows.argtypes = [WNDENUMPROC, LPARAM]
-      user32.EnumWindows.restype = ctypes.c_bool
-      user32.GetWindowTextLengthW.argtypes = [HWND]
-      user32.GetWindowTextLengthW.restype = ctypes.c_int
-      user32.GetWindowTextW.argtypes = [HWND, LPCWSTR, ctypes.c_int]
-      user32.GetWindowTextW.restype = ctypes.c_int
-      user32.SetWindowTextW.argtypes = [HWND, LPCWSTR]
-      user32.SetWindowTextW.restype = ctypes.c_bool
-      return user32
+  def list_all_windows(cls):
+    handles = []
+    def cb(handle, _):
+      handles.append(handle)
+      return True
+    USER_32.EnumWindows(WNDENUMPROC(cb), None)
+    return [Window(handle) for handle in handles]
 
 
 _SCRIPT_PATH_ = None
@@ -200,7 +197,7 @@ class SetWindowTitle(EventListener):
   def rename_window_windows(self, window, official_title, new_title):
     w = self.window_handle_cache.get(window.id(), None)
     if w is None:
-      for w in Window.list_all():
+      for w in list_all_windows():
         if w.title.endswith(official_title):
           w.title = new_title
           # TODO: Understand why caching the windows handle cause crashes.
