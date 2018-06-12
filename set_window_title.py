@@ -70,7 +70,7 @@ elif PLATFORM == "windows":
       t = (ctypes.c_char * (n+10))(*b)
       USER_32.SetWindowTextW(self.handle, LPCWSTR(t))
 
-  def list_all_windows(cls):
+  def list_all_windows():
     handles = []
     def cb(handle, _):
       handles.append(handle)
