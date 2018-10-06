@@ -21,63 +21,6 @@ done
 """
 elif PLATFORM == "windows":
   import ctypes
-  HWND = ctypes.c_void_p
-  LPARAM = ctypes.c_void_p
-  WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, HWND, LPARAM)
-  LPCWSTR = ctypes.POINTER(ctypes.c_uint16)
-
-  def init_user32():
-    user32 = ctypes.windll.user32
-    user32.EnumWindows.argtypes = [WNDENUMPROC, LPARAM]
-    user32.EnumWindows.restype = ctypes.c_bool
-    user32.GetWindowTextLengthW.argtypes = [HWND]
-    user32.GetWindowTextLengthW.restype = ctypes.c_int
-    user32.GetWindowTextW.argtypes = [HWND, LPCWSTR, ctypes.c_int]
-    user32.GetWindowTextW.restype = ctypes.c_int
-    user32.SetWindowTextW.argtypes = [HWND, LPCWSTR]
-    user32.SetWindowTextW.restype = ctypes.c_bool
-    return user32
-
-  USER_32 = init_user32()
-
-  class Window:
-    """Represents a window handle under Windows OS."""
-
-    def __init__(self, handle):
-      self.handle = handle
-
-    def __str__(self):
-      return "Window"
-
-    def __repr__(self):
-      return "Window({})".format(self.handle)
-
-    @property
-    def title(self):
-      # Windows encodes window titles as an array of uint16s under UTF-16
-      # To convert this to python, we cast this to an array of bytes,
-      # then decode it
-      n = USER_32.GetWindowTextLengthW(self.handle)
-      t = (ctypes.c_uint16 * (n+1))()
-      n2 = USER_32.GetWindowTextW(self.handle, t, n+1)
-      assert n == n2
-      return ctypes.POINTER(ctypes.c_char)(t)[0:n2*2].decode("utf16")
-
-    @title.setter
-    def title(self, title):
-      b = title.encode("utf16")
-      n = len(b)
-      t = (ctypes.c_char * (n+10))(*b)
-      USER_32.SetWindowTextW(self.handle, LPCWSTR(t))
-
-  def list_all_windows():
-    handles = []
-    def cb(handle, _):
-      handles.append(handle)
-      return True
-    USER_32.EnumWindows(WNDENUMPROC(cb), None)
-    return [Window(handle) for handle in handles]
-
 
 _SCRIPT_PATH_ = None
 _READY_ = False
@@ -158,7 +101,7 @@ class SetWindowTitle(EventListener):
     if PLATFORM == "linux":
       self.rename_window_linux(window, official_title, new_title, debug)
     elif PLATFORM == "windows":
-      self.rename_window_windows(window, official_title, new_title)
+      self.rename_window_windows(new_title)
 
   def rename_window_linux(self, window, official_title, new_title, debug=False):
     pid = self.window_handle_cache.get(window.id())
@@ -194,17 +137,10 @@ class SetWindowTitle(EventListener):
         if output:
           print("[SetWindowTitle] Error: Failure when renaming:", output)
 
-  def rename_window_windows(self, window, official_title, new_title):
-    w = self.window_handle_cache.get(window.id(), None)
-    if w is None:
-      for w in list_all_windows():
-        if w.title.endswith(official_title):
-          w.title = new_title
-          # TODO: Understand why caching the windows handle cause crashes.
-          # self.window_handle_cache[window.id()] = w
-    else:
-      w.title = new_title
-
+  def rename_window_windows(self, new_title):
+    # PX_WINDOW_CLASS is the ClassName of SublimeText, can be seen via a tool such as Nirsoft WinLister
+    hwndSublime = ctypes.windll.user32.FindWindowA(b'PX_WINDOW_CLASS', None)
+    ctypes.windll.user32.SetWindowTextW(hwndSublime, new_title)
 
 def get_official_title(view, project, settings):
   """Returns the official name for a given view.
