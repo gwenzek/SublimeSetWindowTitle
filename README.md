@@ -8,7 +8,7 @@ it will update the window title.
 
 ## Installation
 
-This package is avalaible on [PackageControl](https://packagecontrol.io/).
+This package is avalaible on [PackageControl](https://packagecontrol.io/packages/SetWindowTitle).
 If you have an unregistered version of Sublime Text you need to set the
 setting "unregistered" to `true` (or to buy a license!).
 
