@@ -143,10 +143,9 @@ class SetWindowTitle(EventListener):
     project = window.project_file_name()
     if not project:
       folders = window.folders()
-      project = folders[0] if folders else None
-    if project:
-      project = os.path.basename(project)
-      project = os.path.splitext(project)[0]
+      project = ", ".join( [get_folder_name(x) for x in folders] ) if folders else None
+    else:
+      project = get_folder_name(project)
 
     return project
 
@@ -205,6 +204,8 @@ class SetWindowTitle(EventListener):
     else:
       w.title = new_title
 
+def get_folder_name(path):
+    return os.path.splitext( os.path.basename( path ) )[0]
 
 def get_official_title(view, project, settings):
   """Returns the official name for a given view.
