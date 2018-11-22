@@ -109,7 +109,21 @@ class TestStringMethods(unittest.TestCase):
         "template": "({project}) {path} - ST"
     }
     root = "/home/hacker/Github/Project"
-    filename = "/home/hacker/Github/Project/hacking_like_a_boss.py"
+    filename = "/home/hacker/Github/Project/src/hacking_like_a_boss.py"
+    view = FakeView(filename, root)
+
+    self.assertEqual("(Project) src/hacking_like_a_boss.py - ST",
+                     swt.get_new_title(view, "Project", settings))
+
+    self.assertEqual("() src/hacking_like_a_boss.py - ST",
+                     swt.get_new_title(view, None, settings))
+
+  def test_new_title_with_file(self):
+    settings = {
+        "template": "({project}) {file} - ST"
+    }
+    root = "/home/hacker/Github/Project"
+    filename = "/home/hacker/Github/Project/src/hacking_like_a_boss.py"
     view = FakeView(filename, root)
 
     self.assertEqual("(Project) hacking_like_a_boss.py - ST",
