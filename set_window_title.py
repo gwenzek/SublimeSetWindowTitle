@@ -98,13 +98,32 @@ def plugin_loaded():
   global _READY_
   _READY_ = True
 
+  # Update all window titles on setting change.
+  settings = sublime.load_settings("set_window_title.sublime-settings")
+  setting_keys = [
+    "unregistered",
+    "template",
+    "has_project_true",
+    "has_project_false",
+    "is_dirty_true",
+    "is_dirty_false",
+    "path_display",
+    "untitled",
+  ]
+  for k in setting_keys:
+    settings.add_on_change(k, refresh_all)
+
   if PLATFORM == "linux":
     # Set the title when the plugin is loaded.
     # Only enabled on Linux because for some reason it freezes ST on Windows.
     # TODO: Find how to enable a similar behavior on Windows.
-    title_setter = SetWindowTitle()
-    for window in sublime.windows():
-      title_setter.run(window.active_view())
+    refresh_all()
+
+
+def refresh_all():
+  title_setter = SetWindowTitle()
+  for window in sublime.windows():
+    title_setter.run(window.active_view())
 
 
 class SetWindowTitle(EventListener):
@@ -230,7 +249,7 @@ def get_new_title(view, project, settings):
   path = _pretty_path(view, settings)
   filename = (
       view.name()
-      or os.path.basename(view.file_name())
+      or os.path.basename(view.file_name() or "")
       or settings.get("untitled", "untitled"))
 
   template = settings.get("template")
