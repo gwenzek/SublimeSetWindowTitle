@@ -1,0 +1,10 @@
+[
+  {
+    "caption": "SetWindowTitle: Settings",
+    "command": "edit_settings",
+    "args": {
+       "base_file": "${packages}/SetWindowTitle/set_window_title.sublime-settings",
+       "default": "{\n  $1\n}"
+     },
+  },
+]
