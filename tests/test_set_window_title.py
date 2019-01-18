@@ -96,6 +96,21 @@ class TestStringMethods(unittest.TestCase):
     self.assertEqual("../AnotherProject/hacking_like_a_boss.py",
                      swt._pretty_path(view, settings))
 
+  def test_get_project_returns_project_name(self):
+    root = "/home/hacker/Github/Project"
+    w = FakeWindow([root], os.path.join(root, "MyProject.sublime-project"))
+    self.assertEqual("MyProject", swt.get_project(w))
+
+  def test_get_project_fallbacks_to_folder_name(self):
+    root = "/home/hacker/Github/Project"
+    w = FakeWindow([root])
+    self.assertEqual("Project", swt.get_project(w))
+
+  def test_get_project_fallbacks_to_folder_list(self):
+    roots = ["/home/hacker/Github/ProjectA", "/home/hacker/Github/ProjectB"]
+    w = FakeWindow(roots)
+    self.assertEqual("ProjectA, ProjectB", swt.get_project(w))
+
   def test_official_title(self):
     settings = {}
     view = FakeView("/home/hacker/Github/Project/hacking_like_a_boss.py")
@@ -177,11 +192,15 @@ class FakeView:
 
 
 class FakeWindow:
-  def __init__(self, folder_list):
+  def __init__(self, folder_list, project_file_name=None):
     self.folder_list = folder_list
+    self.project_file_name_ = project_file_name
 
   def folders(self):
     return self.folder_list
+
+  def project_file_name(self):
+    return self.project_file_name_
 
 
 if __name__ == '__main__':

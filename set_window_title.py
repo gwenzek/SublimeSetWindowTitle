@@ -146,27 +146,12 @@ class SetWindowTitle(EventListener):
       return
 
     settings = sublime.load_settings("set_window_title.sublime-settings")
-    project = self.get_project(view)
+    project = get_project(view.window())
 
     official_title = get_official_title(view, project, settings)
     new_title = get_new_title(view, project, settings)
     self.rename_window(view.window(), official_title, new_title, settings)
     view.settings().set(WAS_DIRTY, view.is_dirty())
-
-  def get_project(self, view):
-    project = None
-    window = view.window()
-    if not window:
-      return
-
-    project = window.project_file_name()
-    if not project:
-      folders = window.folders()
-      project = ", ".join(get_folder_name(x) for x in folders) if folders else None
-    else:
-      project = get_folder_name(project)
-
-    return project
 
   def rename_window(self, window, official_title, new_title, settings):
     """Rename a subl window using the fix_window_title.sh script."""
@@ -223,8 +208,28 @@ class SetWindowTitle(EventListener):
     else:
       w.title = new_title
 
+
+def get_project(window):
+  """Returns the project name for the given window.
+
+  If there is no project, uses the name of opened folders.
+  """
+  if not window:
+    return
+
+  project = window.project_file_name()
+  if not project:
+    folders = window.folders()
+    project = ", ".join(get_folder_name(x) for x in folders) if folders else None
+  else:
+    project = get_folder_name(project)
+
+  return project
+
+
 def get_folder_name(path):
-    return os.path.splitext( os.path.basename( path ) )[0]
+  return os.path.splitext(os.path.basename(path))[0]
+
 
 def get_official_title(view, project, settings):
   """Returns the official name for a given view.
