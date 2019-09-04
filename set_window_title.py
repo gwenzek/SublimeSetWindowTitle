@@ -41,16 +41,29 @@ def plugin_loaded():
   global _READY_
   _READY_ = True
 
-  # Update all window titles on plugin loaded for Linux.
   if PLATFORM == "linux":
-    # Set the title when the plugin is loaded.
-    # Only enabled on Linux because for some reason it freezes ST on Windows.
-    # TODO: Find how to enable a similar behavior on Windows.
+    # Update all window titles on setting change.
+    settings = sublime.load_settings("set_window_title.sublime-settings")
+    setting_keys = [
+      "unregistered",
+      "template",
+      "has_project_true",
+      "has_project_false",
+      "is_dirty_true",
+      "is_dirty_false",
+      "path_display",
+      "untitled",
+    ]
+    for k in setting_keys:
+      settings.add_on_change(k, refresh_all)
+
+    # Update all window titles on plugin loaded for Linux.
     refresh_all()
 
-  # Update top window on plugin loaded for Windows.
+  # Update top window on plugin loaded for Windows. Freezes ST on Windows for some reason to update all window titles at once so on Windows we only update the top window on load and then subsequently on view change. TODO: Find how to update multiple windows at once on plugin loaded for Windows.
   elif PLATFORM == "windows":
     SetWindowTitle().run(sublime.active_window().active_view())
+
 
 def refresh_all():
   title_setter = SetWindowTitle()
