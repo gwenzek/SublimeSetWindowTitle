@@ -41,13 +41,16 @@ def plugin_loaded():
   global _READY_
   _READY_ = True
 
-  # Update all window titles on plugin loaded. Plugin will also be reloaded on settings change.
+  # Update all window titles on plugin loaded for Linux.
   if PLATFORM == "linux":
     # Set the title when the plugin is loaded.
     # Only enabled on Linux because for some reason it freezes ST on Windows.
     # TODO: Find how to enable a similar behavior on Windows.
     refresh_all()
 
+  # Update top window on plugin loaded for Windows.
+  elif PLATFORM == "windows":
+    SetWindowTitle().run(sublime.active_window().active_view())
 
 def refresh_all():
   title_setter = SetWindowTitle()
