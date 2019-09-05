@@ -60,9 +60,10 @@ def plugin_loaded():
     # Update all window titles on plugin loaded for Linux.
     refresh_all()
 
-  # Update top window on plugin loaded for Windows. Freezes ST on Windows for some reason to update all window titles at once so on Windows we only update the top window on load and then subsequently on view change. TODO: Find how to update multiple windows at once on plugin loaded for Windows.
-  elif PLATFORM == "windows":
-    SetWindowTitle().run(sublime.active_window().active_view())
+  # Reported to freeze ST on Windows for some reason to update top or all window titles on loading. TODO: Find how to update window title on plugin loaded for Windows wthout freezing.
+  # Reference - https://github.com/gwenzek/SublimeSetWindowTitle/pull/16
+  #elif PLATFORM == "windows":
+    #SetWindowTitle().run(sublime.active_window().active_view())
 
 
 def refresh_all():
