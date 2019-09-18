@@ -21,6 +21,7 @@ done
 """
 elif PLATFORM == "windows":
   import ctypes
+  LPCWSTR = ctypes.POINTER(ctypes.c_uint16)
 
 _SCRIPT_PATH_ = None
 _READY_ = False
@@ -143,7 +144,9 @@ class SetWindowTitle(EventListener):
   def rename_window_windows(self, new_title):
     # PX_WINDOW_CLASS is the ClassName of SublimeText, can be seen via a tool such as Nirsoft WinLister
     hwndSublime = ctypes.windll.user32.FindWindowA(b'PX_WINDOW_CLASS', None)
-    ctypes.windll.user32.SetWindowTextW(hwndSublime, new_title)
+    text = new_title.encode("utf16")	
+    buff = (ctypes.c_char * (len(text)+10))(*text)
+    ctypes.windll.user32.SetWindowTextW(hwndSublime, LPCWSTR(buff))
 
 def get_project(window):
   """Returns the project name for the given window.
