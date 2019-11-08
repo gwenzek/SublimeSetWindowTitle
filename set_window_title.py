@@ -41,26 +41,29 @@ def plugin_loaded():
   global _READY_
   _READY_ = True
 
-  # Update all window titles on setting change.
-  settings = sublime.load_settings("set_window_title.sublime-settings")
-  setting_keys = [
-    "unregistered",
-    "template",
-    "has_project_true",
-    "has_project_false",
-    "is_dirty_true",
-    "is_dirty_false",
-    "path_display",
-    "untitled",
-  ]
-  for k in setting_keys:
-    settings.add_on_change(k, refresh_all)
-
   if PLATFORM == "linux":
-    # Set the title when the plugin is loaded.
-    # Only enabled on Linux because for some reason it freezes ST on Windows.
-    # TODO: Find how to enable a similar behavior on Windows.
+    # Update all window titles on setting change.
+    settings = sublime.load_settings("set_window_title.sublime-settings")
+    setting_keys = [
+      "unregistered",
+      "template",
+      "has_project_true",
+      "has_project_false",
+      "is_dirty_true",
+      "is_dirty_false",
+      "path_display",
+      "untitled",
+    ]
+    for k in setting_keys:
+      settings.add_on_change(k, refresh_all)
+
+    # Update all window titles on plugin loaded for Linux.
     refresh_all()
+
+  # Reported to freeze ST on Windows for some reason to update top or all window titles on loading. TODO: Find how to update window title on plugin loaded for Windows wthout freezing.
+  # Reference - https://github.com/gwenzek/SublimeSetWindowTitle/pull/16
+  #elif PLATFORM == "windows":
+    #SetWindowTitle().run(sublime.active_window().active_view())
 
 
 def refresh_all():
@@ -143,7 +146,8 @@ class SetWindowTitle(EventListener):
   def rename_window_windows(self, new_title):
     # PX_WINDOW_CLASS is the ClassName of SublimeText, can be seen via a tool such as Nirsoft WinLister
     hwndSublime = ctypes.windll.user32.FindWindowA(b'PX_WINDOW_CLASS', None)
-    ctypes.windll.user32.SetWindowTextW(hwndSublime, new_title)
+    if(hwndSublime):
+      ctypes.windll.user32.SetWindowTextW(hwndSublime, new_title)
 
 def get_project(window):
   """Returns the project name for the given window.
