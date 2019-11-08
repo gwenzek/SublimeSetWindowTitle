@@ -1,7 +1,6 @@
 import sublime
 
 import os
-import time
 from sublime_plugin import EventListener
 
 WAS_DIRTY = "set_window_title_was_dirty"
@@ -41,29 +40,30 @@ def plugin_loaded():
   global _READY_
   _READY_ = True
 
-  if PLATFORM == "linux":
-    # Update all window titles on setting change.
-    settings = sublime.load_settings("set_window_title.sublime-settings")
-    setting_keys = [
-      "unregistered",
-      "template",
-      "has_project_true",
-      "has_project_false",
-      "is_dirty_true",
-      "is_dirty_false",
-      "path_display",
-      "untitled",
-    ]
-    for k in setting_keys:
-      settings.add_on_change(k, refresh_all)
+  # TODO: Find how to update window title on plugin loaded for Windows without freezing.
+  # Both regresh_all and refreshing only the current window fail.
+  # https://github.com/gwenzek/SublimeSetWindowTitle/issues/15
+  # refresh current: SetWindowTitle().run(sublime.active_window().active_view())
+  if PLATFORM != "linux":
+    return
 
-    # Update all window titles on plugin loaded for Linux.
-    refresh_all()
+  # Update all window titles on setting change.
+  settings = sublime.load_settings("set_window_title.sublime-settings")
+  setting_keys = [
+    "unregistered",
+    "template",
+    "has_project_true",
+    "has_project_false",
+    "is_dirty_true",
+    "is_dirty_false",
+    "path_display",
+    "untitled",
+  ]
+  for k in setting_keys:
+    settings.add_on_change(k, refresh_all)
 
-  # Reported to freeze ST on Windows for some reason to update top or all window titles on loading. TODO: Find how to update window title on plugin loaded for Windows wthout freezing.
-  # Reference - https://github.com/gwenzek/SublimeSetWindowTitle/pull/16
-  #elif PLATFORM == "windows":
-    #SetWindowTitle().run(sublime.active_window().active_view())
+  # Update all window titles on plugin loaded for Linux.
+  refresh_all()
 
 
 def refresh_all():
@@ -148,6 +148,7 @@ class SetWindowTitle(EventListener):
     hwndSublime = ctypes.windll.user32.FindWindowA(b'PX_WINDOW_CLASS', None)
     if(hwndSublime):
       ctypes.windll.user32.SetWindowTextW(hwndSublime, new_title)
+
 
 def get_project(window):
   """Returns the project name for the given window.

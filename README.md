@@ -39,8 +39,9 @@ better API for this (relevant issues:
 * (Linux) For some reason some chars aren't displayed correctly.
 
 * (Windows) The plugin is more brittle on Windows, some features have been
-disabled as a consequence. If you have knowledge of the `user32` API we might
-use your help !
+disabled as a consequence.
+In particular you'll have to manually select windows before their name is changed.
+If you have knowledge of the `user32` API we might use your help !
 
 ## Thanks
 
