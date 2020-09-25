@@ -6,6 +6,7 @@
   // The template accept the following parameters:
   // - {path}: the path of the current file
   // - {file}: the filename of the current file (without the path)
+  // - {folder}: the folder of the current file
   // - {project}: the project name, or the name of the top folder
   // - {has_project}: will be replaced by the content of "has_project_true" or
   //   "has_project_false" settings, depending if a "project" has been found.

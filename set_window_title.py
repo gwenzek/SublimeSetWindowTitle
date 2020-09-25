@@ -194,6 +194,7 @@ def get_official_title(view, project, settings):
 def get_new_title(view, project, settings):
   """Returns the new name for a view, according to the user preferences."""
   path = _pretty_path(view, settings)
+  folder = get_folder_name(os.path.dirname(path))
   filename = (
       view.name()
       or os.path.basename(view.file_name() or "")
@@ -204,7 +205,8 @@ def get_new_title(view, project, settings):
   template = _replace_condition(template, "is_dirty", view.is_dirty(), settings)
   new_title = template.format(path=path,
                               project=project or "",
-                              file=filename)
+                              file=filename,
+                              folder=folder or "")
   if settings.get("unregistered", False):
     new_title += " (UNREGISTERED)"
   return new_title
