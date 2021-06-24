@@ -2,6 +2,9 @@
 
 ## Overview
 
+**!!! You probably don't need this plugin anymore in ST4 !!!**
+Just set `"show_project_first": true,` in your preferences.
+
 This plugin allows you to configure the title of your Sublime Text windows.
 Every time you switch view, save a view, start editing a view,
 it will update the window title.
